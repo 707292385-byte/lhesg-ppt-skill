@@ -27,17 +27,14 @@ WorkBuddy 自带的托管解释器：
 系统自动完成配置，无需手动放路径。
 
 **方式二 · 放进技能目录（兜底，必定生效）**
-把 `lhesg-ppt` 文件夹放到：
+把 `lhesg-ppt` 文件夹拷到：
 - 用户级（本人所有项目可用）：`~/.workbuddy/skills/`
 - 项目级（同一项目目录下的团队成员共享）：`<项目根>/.workbuddy/skills/`
 
 Windows 对应用 `%USERPROFILE%\.workbuddy\skills\`。放好后新开一个对话即被识别。
 
-**方式三 · Git 仓库导入（便于后续更新）**
-```bash
-git clone https://github.com/707292385-byte/lhesg-ppt-skill.git ~/.workbuddy/skills/lhesg-ppt
-```
-仓库默认为私有，需要先给同事开放访问（加 collaborator 或改公开）。
+> 分发只走「技能包」：把整个 `lhesg-ppt` 文件夹（含 `SKILL.md`）发给同事，或压成 zip 发送。
+> **不要把仓库地址发给智能体让它自行安装**——这条路径不用、也不写入任何操作说明。
 
 > 装完验证：在对话框说「用 lhesg-ppt 做一页封面」，能跑通即安装成功。
 > 若提示缺少模块，按上面「依赖」一节把 python-pptx / Pillow 装进对应解释器。
