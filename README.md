@@ -21,24 +21,44 @@ WorkBuddy 自带的托管解释器：
 
 ## 安装（分发给同事）
 
-**方式一 · 一键链接安装（推荐）**
-把安装链接发给同事，同事**在装有 WorkBuddy 的电脑上点开链接**即可：
+**方式一 · 链接安装（推荐）**
 
-```
-workbuddy://codebuddy-ide/skill/install?skillname=lhesg-ppt&channelType=link&downloadurl=https%3A%2F%2F<包地址>.zip
-```
+两个链接都可直接发给同事：
 
-- 链接由客户端原生支持（`codebuddy-ide` / `skill/install`），点击后唤起 WorkBuddy →
-  弹确认框 → 确认即自动下载安装，无需手动放路径。
-- `downloadurl` 必须 **https** 且路径以 `.zip`（或 `.md`）结尾，包体 ≤ 50MB；其余参数原样保留。
-- `channelType` 填一个非 `knot` 的值（如 `link`）可直接走链接安装，不去查技能市场。
+1. **安装页**（普通 https 链接，微信/邮件里都能点开）：
+   `https://707292385-byte.github.io/lhesg-ppt-skill/`
+   页面由本仓库的 `docs/index.html` 托管在 GitHub Pages 上，打开后点按钮即装，
+   不熟悉的人照着页面走也不会错。
+2. **直投深链**（点开直接唤起客户端、弹出安装确认框）：
+   ```
+   workbuddy://codebuddy-ide/skill/install?skillname=lhesg-ppt&channelType=link&downloadurl=https%3A%2F%2Fgithub.com%2F707292385-byte%2Flhesg-ppt-skill%2Freleases%2Fdownload%2Fv1.0.0%2Flhesg-ppt-skill-20261010.zip
+   ```
 
-**方式二 · 上传技能包**
-把本目录（含 `SKILL.md`）打包成 zip 交给同事 → 同事打开 WorkBuddy 左侧「技能」面板 →
+深链参数约定（客户端 `tryHandleSkillInstallDeepLink` 为准）：
+
+- `host=codebuddy-ide`、`path=/skill/install`，`skillname` 与 `downloadurl` 都不能空。
+- `downloadurl` 必须 **https**，路径以 `.zip`（或 `.md`）结尾，包体 ≤ 50MB，下载超时 60s；无域名白名单。
+- `channelType` 填非 `knot` 的值（如 `link`）可直接走链接安装，不去查技能市场。
+
+> GitHub 仓库页 / Release 页的普通链接**不能**触发安装——GitHub 只托管文件，能唤起客户端的只有 `workbuddy://`。
+> 想让同事只拿一个 https 链接就能装，就用上面的「安装页」。
+
+**方式二 · 让智能体按链接安装（命令行落地）**
+把 https 链接（GitHub 仓库、zip、或注册表里的 skill 页）发给同事，让智能体把它下载并解压到
+`~/.workbuddy/skills/<技能名>/`。也可走公开的技能注册表，由智能体检索后安装：
+
+- SkillHub：`curl -s "https://lightmake.site/api/v1/search?q=<关键词>"` → `curl -L -o skill.zip "https://lightmake.site/api/v1/download?slug=<slug>"`
+- Vercel Skills（发布在 GitHub 仓库上）：`npx skills add <owner/repo@skill> -g -y`
+- ClawHub：`npx clawhub install <slug> --workdir ~ --dir .workbuddy/skills`
+
+这条路不经过客户端的安装面板，纯命令行落地；私有仓库需要该机有 GitHub 访问凭证。
+
+**方式三 · 上传技能包**
+把本目录打包成 zip 交给同事 → 同事打开 WorkBuddy 左侧「技能」面板 →
 「添加技能」→「上传技能」→ 拖入或选择该 zip（有的版本需先解压、选中 `lhesg-ppt` 文件夹）→
 系统自动完成配置，无需手动放路径。
 
-**方式三 · 放进技能目录（兜底，必定生效）**
+**方式四 · 放进技能目录（兜底，必定生效）**
 把 `lhesg-ppt` 文件夹拷到：
 - 用户级（本人所有项目可用）：`~/.workbuddy/skills/`
 - 项目级（同一项目目录下的团队成员共享）：`<项目根>/.workbuddy/skills/`
@@ -70,6 +90,8 @@ assets/
   base.pptx                   内置基底（母版/版式/主题 + 封面与结尾页原型）
   brand/                      品牌素材：地球背景、箭头条、双 logo、公众号二维码
   icons/                      图标 100 个（模板原生 7 个 + 同系列 Material 实心 93 个，含 INDEX.txt）
+docs/
+  index.html                  安装引导页（GitHub Pages 托管，供同事点按钮一键安装）
 ```
 
 ## 快速开始
