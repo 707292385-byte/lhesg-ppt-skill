@@ -10,8 +10,9 @@ description: 构建 lhesg 风格 PPT。品牌识别（母版、双 logo、装饰
 | 层 | 内容 | 载体 |
 |---|---|---|
 | 资产：品牌与素材 | 母版/版式/主题（标题蓝块灰块、双 logo、三段装饰条、主题色板）+ 封面/结尾固定页 + 图标 | `assets/base.pptx`、`assets/icons/`、`assets/brand/` |
-| 经验：设计判断 | 一页一论点、信息分层、不对称分栏、克制用色、稀缺手段 | `references/design-experience.md` |
+| 经验：设计判断 | 一页一论点、信息分层、分栏看主次、克制用色、密度分层（S/M/L） | `references/design-experience.md` |
 | 手法：表达形态 | 十二种结构（对照/时间轴/漏斗/矩阵/链条/层级/闸门/分界/双轨/象限/瀑布/表格）及选择规则 | `references/layout-library.md` |
+| 数据：图表 | 图表类型选择、排序/标注/单点强调的做法与禁忌 | `references/chart-spec.md`，`EsgDeck.chart()` |
 | 规范：硬性要求 | 字号、色板、安全区、数据可溯源 | 下文与 `references/visual-spec.md`，`font_lint.py` / `verify_deck.py` 强制 |
 
 三条边界：
@@ -29,8 +30,9 @@ description: 构建 lhesg 风格 PPT。品牌识别（母版、双 logo、装饰
 - **E3 分栏看主次**：有主次用不等宽（约 6:5 或 7:4），真平级才等宽并列（二到四列均可）；并列卡片用底色交替而非分隔线。禁的是「有主次却等分」，不是三列本身。
 - **E4 克制用色**：深色只给结构块（≤2 处/页）；橙色每页 ≤1 处且只指向负面事实。
 - **E5 统一网格、逐页变形**：页边距与内容起点固定；版式形态逐页不同，相邻页不同构。
-- **E6 稀缺手段**：表格整份约 1 张，只用于多主体横向对照；图标 0.5–3 个/页。
+- **E6 数据先想图**：讲多少/差多少/占比/趋势时默认画图（`chart-spec.md`），不把数值排成卡片；表格只用于多主体横向对照（整份 1–2 张）；图标 0.5–3 个/页。
 - **E7 版式多样性**：先规划后动手；同套不重复；跨套不复用旧 deck 结构。
+- **E8 密度分层**：页面按 S（稀疏，留白≥50%）/ M（常规 120–200 字）/ L（全量数据摊开）三档交替，不连续三页同档；每 10 页 1–2 页 S、≤2 页 L。
 
 ## 版式多样性的执行规则（重点）
 
@@ -54,12 +56,12 @@ description: 构建 lhesg 风格 PPT。品牌识别（母版、双 logo、装饰
 
 1. **自检**：`python scripts/esg_deck_kit.py --check` 确认基底与图标资产在位。
 2. **内容先行**：先列论点清单（每页一句话结论 + 支撑证据），证据不足先补材料。
-3. **版式规划待确认**：给页面清单——每页标题、表达手法、为什么这样表达；检查相邻页是否同构。用户确认后再动手。
-4. **设计并构建**：按 E1–E7 为每页单独设计，用 kit 原语实现；封面/目录/结尾直接调 `d.cover / d.toc / d.end`。几何单位英寸。
+3. **版式规划待确认**：给页面清单——每页标题、表达手法、密度档位（S/M/L）、为什么这样表达；检查相邻页是否同构、是否连续三页同档。用户确认后再动手。
+4. **设计并构建**：按 E1–E8 为每页单独设计，用 kit 原语实现（数据页优先 `d.chart`）；封面/目录/结尾直接调 `d.cover / d.toc / d.end`。几何单位英寸。
 5. **字号合规**：`python scripts/font_lint.py <deck>`，必须无违规。
 6. **渲染验证**：`python scripts/pptx_render_preview.py <deck> <png目录>` → 拼图 → 目检：溢出、截断、压线、留白失衡、相邻页同构。
 7. **结构校验**：`python scripts/verify_deck.py <deck>`，确认识别元素继承完整、占位符正确、无分节残留。
-8. **经验自检**：按 `design-experience.md` 的七问逐页过一遍。
+8. **经验自检**：按 `design-experience.md` 的九问逐页过一遍。
 9. **交付**：文件名 `主题-用途-lhesg风格-YYYYMMDD.pptx`。
 
 ## 工具与用法
@@ -80,6 +82,9 @@ d.text(s, x, y, w, h, [[("模块标题", S_H2, PRIMARY, F_MED, True)],
 d.shape_text(chip, [[("01", S_H2, WHITE, F_MED)]])             # 形状内文字
 d.icon(s, "icon_eco.png", x, y, 0.52, circle_fill=PRIMARY, tint=WHITE)  # 图标
 d.table(s, x, y, w, h, data, col_w=[...], row_h=1.09)          # 表头深蓝，正文左对齐
+d.chart(s, "bar", cats, vals, x, y, w, h, highlight=0)         # 横向条形，第 0 条亮、其余灰
+d.chart(s, "line", years, [("匹配条数", vals)], x, y, w, h,
+        show_val_axis=False, number_format="0")                # 折线；单系列不给图例
 d.end("谢谢关注！", lines=["地址：…"], contact=["联系人：…", "联系电话：…"])  # 结尾页
 d.save("输出.pptx")
 ```

@@ -40,6 +40,10 @@ from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE, PP_PLACEHOLDER
+from pptx.chart.data import CategoryChartData
+from pptx.enum.chart import (XL_CHART_TYPE, XL_LEGEND_POSITION,
+                             XL_LABEL_POSITION, XL_TICK_MARK,
+                             XL_MARKER_STYLE)
 from pptx.oxml import parse_xml
 from pptx.oxml.ns import qn, nsdecls
 
@@ -65,6 +69,9 @@ MUTED   = RGBColor.from_string("8FAADC")   # 弱化蓝（对比中的"少数/次
 ORANGE  = RGBColor.from_string("C55A11")   # 强调橙（警示/负面，克制使用）
 WHITE   = RGBColor.from_string("FFFFFF")
 ROWALT  = RGBColor.from_string("F2F6FC")   # 表格隔行
+
+# 图表系列色序：单系列用 PRIMARY；多系列按此顺序取，橙色不进默认序列（留给负面强调）
+CHART_SERIES = (PRIMARY, BRIGHT, MUTED, DEEP)
 
 F_HEAVY, F_MED, F_LIGHT = "思源黑体 Heavy", "思源黑体 Medium", "思源黑体 Light"
 
@@ -724,6 +731,209 @@ class EsgDeck:
                     cell.fill.solid()
                     cell.fill.fore_color.rgb = WHITE if ri % 2 else ROWALT
         return tb
+
+    # ── 图表 ──
+    _CHART_KINDS = {
+        "bar": XL_CHART_TYPE.BAR_CLUSTERED,
+        "column": XL_CHART_TYPE.COLUMN_CLUSTERED,
+        "line": XL_CHART_TYPE.LINE_MARKERS,
+        "area": XL_CHART_TYPE.AREA,
+        "pie": XL_CHART_TYPE.PIE,
+        "doughnut": XL_CHART_TYPE.DOUGHNUT,
+    }
+
+    def chart(self, slide, kind, categories, series, x, y, w, h,
+              colors=None, highlight=None, highlight_color=BRIGHT,
+              other_color=MUTED, number_format="0",
+              value_size=S_DENSE, cat_size=S_DENSE,
+              gap_width=55, show_values=True, legend=False,
+              val_min=0, val_max=None, reverse_cats=None,
+              line_w=2.25, label_pos=None, show_cat_axis=True,
+              show_val_axis=False):
+        """原生图表：横向条形 / 柱 / 折线 / 面积 / 饼。
+
+        kind         'bar'（横向条形，类目多时首选）/ 'column' / 'line' /
+                     'area' / 'pie' / 'doughnut'
+        categories   类目列表（已排序好再传入，函数不排序）
+        series       [(系列名, 数值列表), ...]；单系列可直接传数值列表
+        highlight    需要强调的点下标（int 或 list）。给定时其余点转 MUTED，
+                     只留一处亮色——这是数据页最有效的"反模板"手段：
+                     读者先看到那一条，再回看整体。
+        reverse_cats None 时横向条形自动反转（降序数据的第一个排最上），
+                     其余图表保持自然顺序。
+
+        风格内置：无网格线、无图表边框、单系列无图例、数值直标、零基线、
+        类目轴只留一条浅色轴线。不做 3D、不用阴影、不用彩虹色。
+        """
+        if kind not in self._CHART_KINDS:
+            raise ValueError(f"unsupported kind: {kind}")
+        if series and isinstance(series[0], (int, float)):
+            series = [("", list(series))]
+        cd = CategoryChartData()
+        cd.categories = list(categories)
+        for name, values in series:
+            cd.add_series(name or "S1", list(values))
+
+        gf = slide.shapes.add_chart(self._CHART_KINDS[kind], Inches(x), Inches(y),
+                                    Inches(w), Inches(h), cd)
+        ch = gf.chart
+        ch.has_title = False
+        ch.has_legend = bool(legend)
+        if legend:
+            ch.legend.position = XL_LEGEND_POSITION.RIGHT
+            ch.legend.include_in_layout = False
+            ch.legend.font.size = Pt(S_AUX)
+            ch.legend.font.name = F_LIGHT
+            ch.legend.font.color.rgb = GRAY
+
+        # 图表区：无填充无边框，融进页面而非"贴一张图"
+        # python-pptx 未暴露 chartSpace 的 spPr，直接写 XML
+        cs = ch._chartSpace
+        spPr = parse_xml('<c:spPr %s><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>'
+                         % nsdecls("c", "a"))
+        anchor_el = cs.find(qn("c:txPr"))
+        if anchor_el is None:
+            anchor_el = cs.find(qn("c:externalData"))
+        if anchor_el is not None:
+            anchor_el.addprevious(spPr)
+        else:
+            cs.append(spPr)
+        ch.font.size = Pt(cat_size)
+        ch.font.name = F_LIGHT
+        ch.font.color.rgb = GRAY
+
+        plot = ch.plots[0]
+        is_pie = kind in ("pie", "doughnut")
+        if not is_pie:
+            plot.gap_width = gap_width
+            try:
+                plot.overlap = -10 if len(series) > 1 else 0
+            except Exception:
+                pass
+        try:
+            plot.vary_by_categories = False
+        except Exception:
+            pass
+
+        # 类目轴 / 数值轴：网格线全关，只留一条浅轴线作基线
+        cax = ch.category_axis
+        cax.has_major_gridlines = False
+        cax.has_minor_gridlines = False
+        cax.has_title = False
+        try:
+            cax.major_tick_mark = XL_TICK_MARK.NONE
+            cax.minor_tick_mark = XL_TICK_MARK.NONE
+        except Exception:
+            pass
+        try:
+            cax.format.line.color.rgb = BORDER
+            cax.format.line.width = Pt(0.75)
+        except Exception:
+            pass
+        try:
+            cax.tick_labels.font.size = Pt(cat_size)
+            cax.tick_labels.font.name = F_LIGHT
+            cax.tick_labels.font.color.rgb = GRAY
+        except Exception:
+            pass
+        if not show_cat_axis:
+            cax.visible = False
+        elif reverse_cats is None:
+            reverse_cats = (kind == "bar")
+        if reverse_cats:
+            # 反转类目顺序：XML 层设置，兼容 python-pptx 未暴露该属性
+            scaling = cax._element.find(qn("c:scaling"))
+            orient = scaling.find(qn("c:orientation"))
+            if orient is not None:
+                orient.set("val", "maxMin")
+
+        vax = ch.value_axis
+        vax.has_major_gridlines = False
+        vax.has_minor_gridlines = False
+        vax.has_title = False
+        if not is_pie:
+            try:
+                vax.minimum_scale = val_min
+                if val_max is not None:
+                    vax.maximum_scale = val_max
+            except Exception:
+                pass
+        vax.visible = bool(show_val_axis)
+        if show_val_axis:
+            vax.tick_labels.font.size = Pt(S_AUX)
+
+        # 数据标签：直接标数值，不靠图例和刻度换算
+        if show_values:
+            plot.has_data_labels = True
+            dl = plot.data_labels
+            dl.number_format = number_format
+            dl.number_format_is_linked = False
+            dl.font.size = Pt(value_size)
+            dl.font.name = F_MED
+            dl.font.color.rgb = GRAY
+            if is_pie:
+                dl.position = XL_LABEL_POSITION.CENTER
+            elif label_pos is not None:
+                dl.position = label_pos
+            elif kind in ("bar", "column"):
+                dl.position = XL_LABEL_POSITION.OUTSIDE_END
+            elif kind == "line":
+                dl.position = XL_LABEL_POSITION.ABOVE
+
+        # 配色
+        palette = list(colors) if colors else list(CHART_SERIES)
+        idxs = set()
+        if highlight is not None:
+            idxs = {highlight} if isinstance(highlight, int) else set(highlight)
+        for si, ser in enumerate(ch.series):
+            base = palette[si % len(palette)]
+            if kind == "line":
+                ser.format.line.color.rgb = base
+                ser.format.line.width = Pt(line_w)
+                try:
+                    ser.smooth = False
+                except Exception:
+                    pass
+                try:
+                    ser.marker.style = XL_MARKER_STYLE.CIRCLE
+                    ser.marker.size = 7
+                    ser.marker.format.fill.solid()
+                    ser.marker.format.fill.fore_color.rgb = base
+                    ser.marker.format.line.color.rgb = base
+                except Exception:
+                    pass
+            elif kind == "area":
+                ser.format.fill.solid()
+                ser.format.fill.fore_color.rgb = base
+                ser.format.line.color.rgb = base
+            elif is_pie:
+                n = len(ser.points)
+                for pi in range(n):
+                    c = palette[pi % len(palette)] if len(palette) > 1 else base
+                    ser.points[pi].format.fill.solid()
+                    ser.points[pi].format.fill.fore_color.rgb = c
+                    ser.points[pi].format.line.color.rgb = WHITE
+                    ser.points[pi].format.line.width = Pt(1.2)
+            else:
+                ser.format.fill.solid()
+                ser.format.fill.fore_color.rgb = base
+                ser.format.line.fill.background()
+                if idxs:
+                    for pi in range(len(ser.points)):
+                        pt = ser.points[pi]
+                        pt.format.fill.solid()
+                        pt.format.fill.fore_color.rgb = (
+                            highlight_color if pi in idxs else other_color)
+                        pt.format.line.fill.background()
+                        if show_values and pi in idxs:
+                            try:
+                                pt.data_label.font.size = Pt(value_size)
+                                pt.data_label.font.name = F_MED
+                                pt.data_label.font.bold = True
+                                pt.data_label.font.color.rgb = PRIMARY
+                            except Exception:
+                                pass
+        return ch
 
     def save(self, path):
         self.prs.save(path)
