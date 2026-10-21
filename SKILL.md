@@ -101,7 +101,7 @@ d.save("输出.pptx")
 
 ## 已知坑（都踩过）
 
-- **python-pptx 解释器**：用 `~/.workbuddy/binaries/python/envs/default/bin/python`（已装 pptx+PIL）；换机器先 `pip install -r requirements.txt`。
+- **python-pptx 解释器**：用装了 python-pptx + Pillow 的解释器（本机为 `~/.workbuddy/binaries/python/envs/default/bin/python`）；缺依赖先 `pip install -r requirements.txt`。
 - **中文字体**：必须 latin/ea/cs 三个 typeface 都设（`set_font` 已处理）；只设 `font.name` 只写 latin。
 - **清空基底页**：必须 `drop_rel` + `_sldIdLst.remove`，只 remove 会留悬空关系。
 - **分节会跟着留下**：删页不删 `p14:sectionLst`，会留残留节名并可能触发修复提示；kit 已自动清，外部 deck 用 `strip_sections.py`。
