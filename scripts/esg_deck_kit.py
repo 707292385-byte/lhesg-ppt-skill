@@ -405,8 +405,11 @@ class EsgDeck:
             para_el.append(run)
 
     # ── 建页 ──
-    def page(self, title_text, source=True):
-        """新建一页：保留 layout2 的标题与页码占位符，删除正文占位符，正文区自由排版。"""
+    def page(self, title_text, source=False):
+        """新建一页：保留 layout2 的标题与页码占位符，删除正文占位符，正文区自由排版。
+
+        source 默认 False——**只有引用外部材料才加注释**；本地材料（客户官网、
+        内部台账、自己整理的分类表、过程文件）不加来源行。需要加时用 d.note()。"""
         s = self.prs.slides.add_slide(self.layout)
         for ph in list(s.placeholders):
             t = ph.placeholder_format.type
@@ -455,6 +458,15 @@ class EsgDeck:
         self.text(slide, MARGIN_X, y, CONTENT_W, h, paras,
                   line_spacing=1.2)
         return y + h
+
+    def note(self, slide, text, y=SRC_Y, w=CONTENT_W):
+        """页脚注释（9pt 灰字）。**只用于引用外部材料**：外部报告/标准/研究的
+        核心结论、数据、图表，需写清来源名称、年份与条款或页码。
+
+        本地来源材料（客户官网、内部台账、自制分类表、过程文件）不加注释；
+        没有外部引用就不调用本方法。"""
+        return self.text(slide, MARGIN_X, y, w, 0.26,
+                         [[(text, S_AUX, FOOT, F_LIGHT)]])
 
     # ── 特殊页：封面 / 目录 / 结尾 ──
     def _strip_placeholders(self, slide, keep_title=True):
@@ -606,7 +618,8 @@ class EsgDeck:
 
     # ── 形状 ──
     def rect(self, slide, x, y, w, h, fill=None, line=None,
-             rounded=False, radius=0.08, line_w=0.75):
+             rounded=True, radius=0.05, line_w=0.75):
+        """色块默认**轻微圆角**（radius=0.05，约为短边的 5%）。要直角显式传 rounded=False。"""
         shp = slide.shapes.add_shape(
             MSO_SHAPE.ROUNDED_RECTANGLE if rounded else MSO_SHAPE.RECTANGLE,
             Inches(x), Inches(y), Inches(w), Inches(h))
