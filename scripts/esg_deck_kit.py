@@ -431,32 +431,29 @@ class EsgDeck:
         return s
 
     def conclusion(self, slide, text, y=CONTENT_TOP, h=0.88,
-                   fill=LIGHT, accent=PRIMARY, size=S_BODY):
-        """全页结论条：**结论先行**——紧贴标题之下、证据（图表/表格/卡片）之上通栏铺一条。
+                   fill=None, accent=PRIMARY, size=S_BODY):
+        """全页结论：**结论先行**——紧贴标题之下、证据之上放一行文字。
 
-        页面纵向顺序固定为：**标题 → 全页结论 → 证据 → 来源行**。读者从上往下
-        第一眼拿到判断，再向下看支撑；结论条不落在页面底部。
-        条内直接写结论句，不加"本页结论："这类栏目标签。
+        不加底色块、不加竖线、不加框——结论就是一行排版的文字，
+        靠字重和颜色区分，不靠色块。
+        页面纵向顺序固定为：**标题 → 全页结论 → 证据 → 来源行**。
 
         text 三种写法：
           - 字符串：整句按"主蓝加粗"排版；
           - 单个段落（run 列表）：[(文本, 字号, 颜色, 字体[, 加粗]), ...]，
             常用做法是"前半句判断加粗主蓝 + 后半句说明常规"：
-            [[(判断句, S_BODY, PRIMARY, F_MED, True), (说明, S_BODY, BODY, F_LIGHT)]]
+            [(判断句, S_BODY, PRIMARY, F_MED, True), (说明, S_BODY, BODY, F_LIGHT)]
           - 多段落：[[run, ...], [run, ...]]
 
-        返回结论条底边 y；证据区从 返回的 y + 0.24 起排。"""
+        返回结论区底边 y；证据区从 返回的 y + 0.24 起排。"""
         if isinstance(text, str):
             paras = [[(text, size, accent, F_MED, True)]]
         elif text and isinstance(text[0], tuple):
             paras = [text]
         else:
             paras = text
-        self.rect(slide, MARGIN_X, y, CONTENT_W, h, fill=fill,
-                  rounded=True, radius=0.14)
-        self.vline(slide, MARGIN_X, y, h, color=accent, w=0.06)
-        self.text(slide, MARGIN_X + 0.33, y, CONTENT_W - 0.66, h, paras,
-                  anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.2)
+        self.text(slide, MARGIN_X, y, CONTENT_W, h, paras,
+                  line_spacing=1.2)
         return y + h
 
     # ── 特殊页：封面 / 目录 / 结尾 ──
